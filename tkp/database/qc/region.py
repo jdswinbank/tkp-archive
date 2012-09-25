@@ -2,61 +2,15 @@
 # LOFAR Transients Key Project
 #
 
-# Python standard library
-import logging
 import os
-# Other external libraries
+import logging
 from datetime import datetime
 import monetdb.sql as db
 
-def createRegionFromCat(
-    icatname, ira_min, ira_max, idecl_min, idecl_max, conn, dirname, icolor='green', logger=logging.getLogger()
-):
-    """
-    Create a region file for the specified image.
-    """
-    try:
-        outfile = dirname + datetime.now().strftime('%Y%m%d-%H%M') + '_' + str(icatname) + '.reg'  
-        if os.path.isfile(outfile):
-            os.remove(outfile)
-        file = open(outfile,'w')
-        file.close()
-        os.chmod(outfile,0777)
-        cursor = conn.cursor()
-        cursor.execute("COPY " + \
-                       "SELECT t.line " + \
-                       "  FROM (SELECT CAST('# Region file format: DS9 version 4.0' AS VARCHAR(300)) AS line " + \
-                       "        UNION " + \
-                       "        SELECT CAST('# Filename: ' AS VARCHAR(300)) AS line " + \
-                       "        UNION " + \
-                       "        SELECT CAST(CONCAT('global color=', CONCAT(%s , ' font=\"helvetica 10 normal\" select=1 highlite=1 edit=1 move=1 delete=1 include=1 fixed=0 source')) AS VARCHAR(300)) AS line " + \
-                       "        UNION " + \
-                       "        SELECT CAST('fk5' AS VARCHAR(300)) AS line " + \
-                       "        UNION " + \
-                       "        SELECT CAST(CONCAT('box(', CONCAT(ra, CONCAT(',', CONCAT(decl, CONCAT(',', CONCAT(ra_err/1800, CONCAT(',', CONCAT(decl_err/1800, CONCAT(') #color=', CONCAT(%s, CONCAT(' text={', CONCAT(catsrcid, '}')))))))))))) AS VARCHAR(300)) AS line" + \
-                       "          FROM catalogedsources " + \
-                       "              ,catalogs " + \
-                       "          WHERE cat_id = catid " + \
-                       "            AND catname = %s " + \
-                       "            AND ra BETWEEN %s " + \
-                       "                       AND %s " + \
-                       "            AND decl BETWEEN %s " + \
-                       "                         AND %s " + \
-                       "       ) t " + \
-                       "  INTO %s " + \
-                       " DELIMITERS ';' " + \
-                       "          ,'\\n' " + \
-                       "          ,'' ", (icolor, icolor, icatname.strip().upper(), ira_min, ira_max, idecl_min, idecl_max, outfile))
-        cursor.close()
-        return outfile
-    except db.Error, e:
-        logger.warn("Creating region file for catalog %s failed: " % (str(icatname)))
-        raise
-
 def extractedsourcesInImage(conn, image_id, dirname, icolor='magenta'):
     """
-    Create a region file that contains all the extracted
-    sources in the specified image.
+    Create a region file that contains all the extracted sources 
+    in the specified image.
     """
     try:
         outfile = dirname + '/xtrsrc_' + datetime.now().strftime('%Y%m%d-%H%M') + '_img' + str(image_id) + '.reg'  
@@ -90,7 +44,7 @@ def extractedsourcesInImage(conn, image_id, dirname, icolor='magenta'):
             width = results[3]
             height = results[4]
             url = results[5]
-        if len(results) != 0:
+        
             regfile.write('# Filename: %s \n' % (url[0],))
             regfile.write('global color=%s dashlist=8 3 width=1 font="helvetica 10 normal roman" select=1 highlite=1 dash=0 fixed=0 edit=1 move=1 delete=1 include=1 source=1\n' % (icolor,))
             regfile.write('fk5\n')
@@ -138,7 +92,7 @@ def runcatInDataset(conn, dataset_id, dirname, icolor='yellow'):
             decl = results[2]
             width = results[3]
             height = results[4]
-        if len(results) != 0:
+        
             regfile.write('# Filename: \n')
             regfile.write('global color=%s dashlist=8 3 width=1 font="helvetica 10 normal roman" select=1 highlite=1 dash=0 fixed=0 edit=1 move=1 delete=1 include=1 source=1\n' % (icolor,))
             regfile.write('fk5\n')
@@ -192,7 +146,7 @@ def assoccatsourcesInImage(conn, image_id, dirname, icolor='yellow'):
             width = results[3]
             height = results[4]
             url = results[5]
-        if len(results) != 0:
+        
             regfile.write('# Filename: %s \n' % (url[0],))
             regfile.write('global color=%s dashlist=8 3 width=1 font="helvetica 10 normal roman" select=1 highlite=1 dash=0 fixed=0 edit=1 move=1 delete=1 include=1 source=1\n' % (icolor,))
             regfile.write('fk5\n')
@@ -258,65 +212,3 @@ def catsourcesInRegion(conn, image_id, ra_min, ra_max, decl_min, decl_max, dirna
     except db.Error, e:
         logging.warn("Failed on Query %s \nfor reason: %s" % (query, e))
         raise
-    
-
-def createRegionFileFromRunCat(conn
-                              ,dirname
-                              ,icolor = 'green'
-                              ,dataset = 0
-                              ,datapoints = 0
-                              ,logger=logging.getLogger()
-                              ):
-    """
-    Create a region file from all the sources in the running catalog.
-    """
-    try:
-        outfile = dirname + 'runcat.' + datetime.now().strftime('%Y%m%d-%H%M') + '.reg'  
-        print outfile
-        if os.path.isfile(outfile):
-            os.remove(outfile)
-        print outfile
-        file = open(outfile,'w')
-        file.close()
-        os.chmod(outfile,0777)
-        sql_copy_into_reg = """\
-          COPY 
-          SELECT t.line 
-            FROM (SELECT CAST('# Region file format: DS9 version 4.0' AS VARCHAR(300)) AS line 
-                  UNION 
-                  SELECT CAST('# Filename: run cat sources' AS VARCHAR(300)) AS line 
-                  UNION 
-                  SELECT CAST(CONCAT('global color='
-                        ,CONCAT(%s,' font=\"helvetica 10 normal\" select=1 highlite=1 edit=1 move=1 delete=1 include=1 fixed=0 source')) AS VARCHAR(300)) AS line 
-                  UNION 
-                  SELECT CAST('fk5' AS VARCHAR(300)) AS line 
-                  UNION 
-                  SELECT CAST(CONCAT('box('
-                        ,CONCAT(ra_avg, CONCAT(','
-                        ,CONCAT(decl_avg, CONCAT(','
-                        ,CONCAT(ra_err_avg/1800, CONCAT(','
-                        ,CONCAT(decl_err_avg/1800
-                        ,CONCAT(') #color='
-                        ,CONCAT(%s
-                        ,CONCAT(' text={'
-                        ,CONCAT('R', '}')
-                               ))))))))))) AS VARCHAR(300)) AS line
-                    FROM runningcatalog 
-                   WHERE dataset = %s
-                     AND datapoints > %s
-                 ) t 
-            INTO %s 
-          DELIMITERS ';' 
-                    ,'\\n' 
-                    ,'' 
-        """
-        cursor = conn.cursor()
-        print "cursor created"
-        cursor.execute(sql_copy_into_reg, (icolor, icolor, dataset, datapoints, outfile))
-        print "executed"
-        cursor.close()
-        return outfile
-    except db.Error, e:
-        logger.warn("Creating region file failed")
-        raise
-
