@@ -647,8 +647,7 @@ class ImageData(object):
                         )
                     )
                 )
-    
-            
+
             mylabel = labels[x, y]
             if mylabel == 0:  # 'Background'
                 raise ValueError("Fit region is below specified threshold, fit aborted.")
@@ -660,16 +659,21 @@ class ImageData(object):
             fitme = self.data_bgsubbed[chunk]
             if fitme.size < 1:
                 raise IndexError("Fit region too close to edge or too small")
-        
 
         # set argument for fixed parameters based on input string
         if fixed == 'position':
-            fixed = {'xbar': boxsize/2.0, 'ybar': boxsize/2.0}
+            fixed = {
+                'xbar': [(boxsize/2.0)-1.5, (boxsize/2.0)+1.5],
+                'ybar': [(boxsize/2.0)-1.5, (boxsize/2.0)+1.5],
+            }
         elif fixed == 'position+error':
-            fixed = {'xbar': boxsize/2.0, 'ybar': boxsize/2.0,
-                     'semimajor': self.beam[0],
-                     'semiminor': self.beam[1],
-                     'theta': self.beam[2]}
+            fixed = {
+                'xbar': [(boxsize/2.0)-1.5, (boxsize/2.0)+1.5],
+                'ybar': [(boxsize/2.0)-1.5, (boxsize/2.0)+1.5],
+                'semimajor': self.beam[0],
+                'semiminor': self.beam[1],
+                'theta': self.beam[2]
+            }
         elif fixed == None:
             fixed = {}
         else:
