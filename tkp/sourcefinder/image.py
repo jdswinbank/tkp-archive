@@ -28,7 +28,6 @@ from . import stats
 from . import extract
 
 logger = logging.getLogger(__name__)
-#logging.basicConfig()
 
 CONFIG = config['source_extraction']
 
@@ -129,6 +128,8 @@ class ImageData(object):
             radius_mask = utils.circular_mask(self.xdim, self.ydim, CONFIG['radius'])
             mask = numpy.logical_or(mask, radius_mask)
         mask = numpy.logical_or(mask, numpy.where(self.rawdata == 0, 1, 0))
+        mask = numpy.logical_or(mask, numpy.where(numpy.isnan(self.rawdata), 1, 0))
+
         return numpy.ma.array(self.rawdata, mask=mask)
     data = property(fget=_get_data, fdel=_get_data.delete)
 
@@ -346,7 +347,6 @@ class ImageData(object):
         # there's no point in working with the whole of the data array
         # if it's masked.
         useful_chunk = ndimage.find_objects(numpy.where(self.data.mask, 0, 1))
-        #print useful_chunk
         assert(len(useful_chunk) == 1)
         useful_data = self.data[useful_chunk[0]]
         my_xdim, my_ydim = useful_data.shape
@@ -882,7 +882,10 @@ class ImageData(object):
         # appending it to the results list.
         results = containers.ExtractionResults()
         for island in island_list:
-            measurement, residual = island.fit()
+            try:
+                measurement, residual = island.fit()
+            except:
+                continue
             try:
                 det = extract.Detection(measurement, self, chunk=island.chunk)
                 if (det.ra.error == float('inf') or 
@@ -892,7 +895,7 @@ class ImageData(object):
                                   '(increase fitting margin?)', det.x, det.y )
                 else:
                     results.append(det)
-                    
+
                 if CONFIG['residuals']:
                     self.residuals_from_deblending[island.chunk] -= (
                         island.data.filled(fill_value=0.))

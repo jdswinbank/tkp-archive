@@ -196,8 +196,16 @@ class Island(object):
 
     def fit(self):
         """Fit the position"""
-        measurement, gauss_residual = source_profile_and_errors(
-            self.data, self.threshold(), self.noise(), self.beam)
+        fixed = {
+            'semimajor': self.beam[0],
+            'semiminor': self.beam[1],
+            'theta': self.beam[2]
+        }
+        try:
+            measurement, gauss_residual = source_profile_and_errors(
+                self.data, self.threshold(), self.noise(), self.beam, fixed=fixed)
+        except:
+            return
         measurement["xbar"] += self.position[0] + 1 # address + offset  = address but not address + address 
         measurement["ybar"] += self.position[1] + 1 # because addresses start at 0
         measurement.sig = self.sig()
